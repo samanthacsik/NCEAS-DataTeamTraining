@@ -8,7 +8,7 @@
 ##############################
 
 # NOTE: this is just a placeholder to remind you to get temp token and run in console
-options(dataone_test_token = "...")
+# options(dataone_test_token = "...")
 
 ##############################
 # Step 2: load packages
