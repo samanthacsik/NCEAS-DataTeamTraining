@@ -7,6 +7,7 @@
 # REMEMBER TO GET TOKEN FIRST (from test.arcticdata.io)
 
 # load packages
+# library(tidyverse)
 library(devtools)
 library(dataone)
 library(datapack)
@@ -326,7 +327,7 @@ doc$dataset$otherEntity <- list(otherEntity, doc$dataset$otherEntity)
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# Step 4.8.2 Entity-level annotations
+# Step 4.8.1.1 Attribute-level annotations
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -335,8 +336,323 @@ doc$dataset$dataTable[[i]]$attributeList$attribute[[i]]$annotation # returns NUL
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# Step 4.8.3 Ontologies used/ 4.8.3.1 OBOE: The Extensible Observation Ontology
+# Step 4.8.2 How to add an annotation
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ 
+
+# 1. decide which variable to annotate
+
+# 2. Find an appropriate `valueURI` ("this attribure contains measurements of ___")
+
+# 3. Build the annotations in R
+
+# figure out the index of the attribute you want to annotate
+eml_get_simple(doc$dataset$dataTable[[3]]$attributeList, "attributeName")
+
+# assign an `id` to the attribute (use format `entity_x_attribute_y`)
+doc$dataset$dataTable[[3]]$attributeList$attribute[[6]]$id <- "entity_ctd_attribute_salinity"
+
+# assign the `propertyURI` information (this will be the same for every annotation you build)
+doc$dataset$dataTable[[3]]$attributeList$attribute[[6]]$annotation$propertyURI <- list(label = "contains measurement of type",
+                                                                                       propertyURI = "http://ecoinformatics.org/oboe/oboe.1.2/oboe-core.owl#containsMeasurementsOfType")
+
+# add `valueURI` information from your search; you should see an ID on the Bioportal page that looks like a URL - this is the `valueURI`; use the value to populate the label element
+doc$dataset$dataTable[[3]]$attributeList$attribute[[6]]$annotation$valueURI <- list(label = "Water Salinity",
+                                                                                    valueURI = "http://purl.dataone.org/odo/ECSO_00001164")
+                                                                                    
+##############################
+# Step 4.9 Exercise 3a
+# metadata for the dataset created in Exercise 2 was not very complete; here we will add an attribute and physical to our entity (csv file)
+  # replace existing `dataTable` with a new `dataTable` object... 
+  # ...with an `attributeList` and `physical` section that you write in R with the above commands
+##############################
+
+#~~~~~~~~~~~~
+# earlier dataset: 
+doc # document we uploaded via web and also via R in Ch2
+  # vars: aggregated_class, GLC2000_class, permafrost_continuity, area, canopy_cover_perc
+data_pid # data persistent identifier
+metadata_pid # metadata persistent identifier
+resource_map_pid # resource map pid
+rm_pid # most recent pid (I think?? see commands lines 38-41) 
+pkg # entire package (can access pids by coding: pkg$data, pkg$metadata, pkg$resource_map)
+#~~~~~~~~~~~~
+
+# load data file
+my_data <- read.csv(here::here("data", "Exercise1_reformatted_table.csv"))
+my_data <- as.data.frame(my_data) # is this necessary??
+
+# launch Shiny app
+EML::shiny_attributes(data = my_data)
+
+# read in attributes list generated in shiny app above
+my_attributes<- read.csv("data/Attributes_Table.csv")
+my_attributes <- as.data.frame(my_attributeList)
+
+# first view units
+standardUnits <- EML::get_unitList()
+View(standardUnits$units)
+
+# build custom list (b/c of km^2 10^6)
+custom_units <- data.frame(
+  
+  id = c("kilometerSquared 10^6", "percent"),
+  unitType = c("area", "dimensionless"),
+  parentSI = c("meter", "dimensionless"),
+  multiplierToSI = c("1000000", "1"),
+  abbreviation = c("km^2 10^6", "%"),
+  description = c("square kilometer times 10^6", "percent, one part per hundred parts"),
+  
+  stringsAsFactors = FALSE)
+
+# add custom units to `additionalMetadata`
+unitlist <- set_unitList(custom_units, as_metadata = TRUE)
+doc$additionalMetadata <- list(metadata = list(unitlist = unitlist))
+
+# finalize attributeList -- THIS STILL NEEDS TO BE ADDED TO A dataTable
+my_attributeList <- EML::set_attributes(attributes = my_attributes)
+
+# build a `physical` object from the data `PID`
+my_physical <- arcticdatautils::pid_to_eml_physical(adc_test, data_pid)
+
+# now add attributeList and physical to dataTable
+dataTable <- eml$dataTable(entityName = "Land cover of permafrost zones in the Circum-Arctic (2000)",
+                           entityDescription = "Aggregated land cover data for Circum-Arctic permafrost zones (2000)",
+                           physical = my_physical,
+                           attributeList = my_attributeList)
+
+# replace whatever dataTable elements already exist in EML:
+doc$dataset$dataTable <- dataTable
+
+##############################
+# Step 4.10 Edit spatial data (`spatialVector` and `spatialRaster`)
+##############################
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Step 4.10.0.1 File types
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ 
+
+# no example code
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Step 4.10.1 Reading spatial files
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ 
+
+# read in files to (1) help you in creating your attributes table and (2) sometimes also figure out the coordinate reference system
+library(sf)
+spatial_file <- sf::read_sf("example.kml") # file doesn't exist
+
+# if it is a zipped shape file, use:
+arcticdatautils::read_zip_shapefile(mn, pid) # won't run without defining member node and having a real pid
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Step 4.10.1.1 Coordinate systems
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ 
+
+# to find the `horizCoordSysName` use:
+sf::st_crs(spatial_file) # obvi won't run b/c spatial_file isn't defined
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Step 4.10.2 spactialVector
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ 
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Step 4.10.2.1 Adding geometry
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-# no exercise here, but check out the OBOE ontology, which covers: Overvations, Entities, Characteristics, and Protocols
+# spatialVector object should also have a `geometry` slot that describes the geometry features of the data
+# to add just a `geometry` slot, use:
+doc$dataset$spatialVector[[1]]$geometry <- "Polygon"
+
+# to add it using the data pid: 
+# (1) get the geometry and spatialReference\
+
+# (2) use `pid_to_eml_entity()` to generate the spatialVector
+spatialVector <- pid_to_eml_entity(adc, 
+                                   pkg$data[n], 
+                                   entity_type = "spatialVector",
+                                   entityName = "filename.kml",
+                                   entityDescription = "some desciption",
+                                   attributeList = attributeList,
+                                   geometry = "Point",
+                                   spatialReference = list(horizCoordSysName = "GCS_WGS_1984"))
+
+# add the spatialVector to the `doc`
+doc$dataset$spatialVector[[1]] <- spatialVector
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Step 4.10.3 spatialRasters (typically come in GeoTiff or Tiff files; data presented as grit of pixels)
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+# get coordinate system name??????
+eml_get_raster_metadata(path, coord_name, attributes) # does not run
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Step 4.11 Set coverage (temporal, geographic, taxonomic coverage of dataset)
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+# view current coverage (if it exists)
+doc$dataset$coverage
+
+# when EML docs lack coverage info, create from scratch or replace existing with an updated one
+coverage <- EML::set_coverage(beginDate = '2012-01-01', 
+                              endDate = '2012-01-10', 
+                              sci_names = c('exampleGenus exampleSpecies1', 'exampleGenus ExampleSpecies2'),
+                              geographicDescription = "The geographic region covers the lake region near Eagle Mountain, Alaska.",
+                              west = -154.6192, 
+                              east = -154.5753, 
+                              north = 68.3831, 
+                              south = 68.3619)
+doc$dataset$coverage <- coverage
+
+# can also set multiple geographic (or temporal) coverages; e.g. set two geo coverages
+geocov1 <- eml$geographicCoverage(geographicDescription = "The geographich region covers area 1",
+                                  boundingCoordinates = eml$boundingCoordinates(
+                                    northBoundingCoordinate = 68,
+                                    eastBoundingCoordinate = -154,
+                                    southBoundingCoordinate = 67,
+                                    westBoundingCoordinate = -155))
+
+geocov2 <- eml$geographicCoverage(geographicDescription = "The geographich region covers area 2",
+                                  boundingCoordinates = eml$boundingCoordinates(
+                                    northBoundingCoordinate = 65,
+                                    eastBoundingCoordinate = -151,
+                                    southBoundingCoordinate = 62,
+                                    westBoundingCoordinate = -153))
+
+coverage <- EML::set_coverage(beginDate = '2012-01-01', 
+                              endDate = '2012-01-10', 
+                              sci_names = list('exampleGenus exampleSpecies1', 'exampleGenus ExampleSpecies2'))
+
+doc$dataset$coverage$geographicCoverage <- list(geocov1, geocov2)
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Step 4.12 Set methods
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+# to add methods to an EML doc that has none is by addign them via a MS Word doc
+methods1 <- set_methods('methods_doc.docx')
+doc$dataset$methods <- methods1
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Step 4.12.1 Adding sampling info to methods section
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+# add method steps as new variables
+step1 <- eml$methodStep(description = "text describing the methods used")
+
+stEx <- eml$studyExtent(description = "study extent description")
+
+samp <- eml$sampling(studyExtent = stEx,
+                     samplingDescription = "sampling description text")
+
+
+# combine all methods steps and sampling info 
+methods1 <- eml$methods(methodStep = step1, 
+                        sampling = samp)
+
+doc$dataset$methods <- methods1
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Step 4.13 Set parties
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+# to add people with addresses:
+NCEASadd <- eml$address( 
+  deliveryPoint = "735 State St #300", 
+  city = "Santa Barbara", 
+  administrativeArea = 'CA', 
+  postalCode = '93101')
+
+# to create `creator`:
+JC_creator <- arcticdatautils::eml_creator(given_names = "Jeanette", 
+                                           sur_name = "Clark", 
+                                           organization = "NCEAS", 
+                                           email = "jclark@nceas.ucsb.edu", 
+                                           phone = "123-456-7890", 
+                                           userId = "https://orcid.org/WWWW-XXXX-YYYY-ZZZZ",
+                                           address = NCEASadd)
+doc$dataset$creator <- JC_creator
+
+# to create `contact`s
+JC_contact <- arcticdatautils::eml_contact(given_names = "Jeanette", 
+                                           sur_name = "Clark", 
+                                           organization = "NCEAS", 
+                                           email = "jclark@nceas.ucsb.edu", 
+                                           phone = "123-456-7890",  
+                                           userId = "https://orcid.org/WWWW-XXXX-YYYY-ZZZZ",
+                                           address = NCEASadd)
+
+JG_contact <- arcticdatautils::eml_contact(given_names = "Jesse", 
+                                           sur_name = "Goldstein", 
+                                           organization = "NCEAS", 
+                                           email = "jgoldstein@nceas.ucsb.edu", 
+                                           phone = "123-456-7890",  
+                                           userId = "https://orcid.org/WWWW-XXXX-YYYY-ZZZZ",
+                                           address = NCEASadd)
+
+doc$dataset$contact <- list(JC_contact, JG_contact)
+
+# to create the `associatedParty`s
+JG_ap <- arcticdatautils::eml_associated_party(given_names = "Jesse", 
+                                               sur_name = "Goldstein", 
+                                               organization = "NCEAS", 
+                                               email = "jgoldstein@nceas.ucsb.edu",
+                                               phone = "123-456-7890",  
+                                               address = NCEASadd, 
+                                               userId = "https://orcid.org/WWWW-XXXX-YYYY-ZZZZ",
+                                               role = "metaataProvider")
+doc$dataset$associatedParty <- JG_ap
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Step 4.14 Validate EML and update package
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+# to make sure that your edited EML is valid against the EML schema, run `eml_validate()` on your EML; fix any errors
+eml_validate(doc)
+
+# save your EML to a path of your choice or a temp file
+eml_path <- "path/to/save/eml.xml"
+write_eml(doc, eml_path)
+
+# to update a package with newly edited EML (NOTE: there are other argumetns that you may need in addition):
+update <- publish_update(adc_test, 
+                         metadata_pid = pkg$metadata,
+                         resource_map_pid = pkg$resource_map,
+                         data_pids = pkg$data,
+                         metadata_path = eml_path, 
+                         public = FALSE)
+
+# after package is published, run the `datamgmt::qa_package()` which checks for:
+  # correctness of distribution of URLs for each data object
+  # congruence of metadata and data
+qa_package <- function(node, pid, readAllData = TRUE,
+                       check_attributes = TRUE,
+                       check_creators = FALSE, 
+                       check_access = FALSE)
+# NOTE:`check_creators` and `check_access` can be set to TRUE to check for correctness of ORCiDs of creators in given EML & rights and access are set for creators in the system metadata
+
+# in most cases, `qa_package()` will be run just by passing in a member node and the resource map PID
+qa_package(mn, resource_map_pid)

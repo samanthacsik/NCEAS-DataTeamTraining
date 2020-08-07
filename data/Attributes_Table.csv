@@ -1,0 +1,6 @@
+"attributeName","measurementScale","domain","unit","numberType","attributeLabel","attributeDefinition","definition","formatString","missingValueCode","missingValueCodeExplanation"
+"aggregated_class","nominal","textDomain",NA,NA,"Aggregated Land Cover Class","Six aggregate land cover classes determined from the Global Land Cover 2000 dataset (GLC2000, Bartholomé and Belward 2005)","Six aggregate land cover classes determined from the Global Land Cover 2000 dataset (GLC2000, Bartholomé and Belward 2005)",NA,"NA","NA"
+"GLC2000_class","nominal","textDomain",NA,NA,"GLC2000 Class","Original GLC2000 classes, defined in Bartholomé and Belward 2005","Original GLC2000 classes, defined in Bartholomé and Belward 2005",NA,"NA","NA"
+"permafrost_continuity","nominal","textDomain",NA,NA,"Permafrost Continuity","Permafrost affected areas are categorized as either continuous (90%-100% areal cover) or discontinuous (50%-90% areal cover)","Permafrost affected areas are categorized as either continuous (90%-100% areal cover) or discontinuous (50%-90% areal cover)",NA,"NA","NA"
+"area_km2_106","interval","numericDomain","kilometer2106","real","Area of Land Cover (km^2 10^6)","Area of land cover",NA,NA,"NA","NA"
+"canopy_cover_perc","interval","numericDomain","percentage","real","Canopy Cover (5)","Percent canopy cover",NA,NA,"NA","NA"
