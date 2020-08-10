@@ -1,19 +1,25 @@
 ##########################################################################
 ##########################################################################
 ##########################################################################
-### Ch. 4 Editing EML Exercises
+### Ch. 2 Creating a Data Package
 ##########################################################################
 ##########################################################################
 ##########################################################################
 
 ##############################
-# get token, load packages, set nodes, load data packages, load EML file
+# Step 1: ID myself as admin by passing temp token into R
+# Sign into ADC with ORCiD: https://arcticdata.io/catalog/data
+# My profile -> Settings -> Authentication Token -> Token for DataONE R 
+# Run in console
 ##############################
 
-# REMEMBER TO GET TOKEN FIRST (from test.arcticdata.io)
+# NOTE: this is just a placeholder to remind you to get temp token and run in console
+# options(dataone_test_token = "...")
 
-# load packages
-library(tidyverse)
+##############################
+# Step 2: load packages
+##############################
+
 library(devtools)
 library(dataone)
 library(datapack)
@@ -23,8 +29,58 @@ library(XML)
 library(arcticdatautils)
 library(datamgmt)
 
-# source Ch2 file to get resource map pid (this will also set nodes)
-source("code/Ch2_Creating_a_data_package.R")
+##############################
+# Step 3: set node to the test Arctic node (we'll work exclusively on this node for training)
+# once this is set, you can publish an object
+##############################
+
+cn_staging <- CNode('STAGING')
+adc_test <- getMNode(cn_staging,'urn:node:mnTestARCTIC')
+
+##############################
+# Step 4: publish data and metadata to the *test* site
+##############################
+
+# data
+data_path <- "data/Exercise1_reformatted_table.csv"
+data_formatId <- "text/csv"
+data_pid <- publish_object(adc_test,
+                           path = data_path,
+                           format_id = data_formatId) # output is PID of newly published object
+
+# metadata
+metadata_path <- "metadata/Aggregated_Land_Cover_Data_for_Circum_Arctic.xml"
+metadata_formatId <- format_eml("2.2.0")
+metadata_pid <- publish_object(adc_test,
+                               path = metadata_path,
+                               format_id = metadata_formatId)
+
+##############################
+# Step 5: Create a resource map 
+##############################
+
+resource_map_pid <- create_resource_map(adc_test,
+                                        metadata_pid = metadata_pid,
+                                        data_pids = data_pid)
+
+
+##############################
+# View your new data set by appending the metadata PID to the end of the URL: test.arcticdata.io/#view/…
+##############################
+
+##########################################################################
+##########################################################################
+##########################################################################
+### Ch. 4 Editing EML Exercises
+##########################################################################
+##########################################################################
+##########################################################################
+
+##############################
+# get token, load packages, set nodes, load data packages, load EML file
+##############################
+
+# REMEMBER TO GET TOK(from test.arcticdata.io)
 
 # load data packages
 rm_pid <- "resource_map_urn:uuid:39b5af4c-43d0-4b3f-b83a-bb2a6cde089a"
@@ -59,7 +115,7 @@ my_data <- read.csv(here::here("data", "Exercise1_reformatted_table.csv"))
 my_data <- as.data.frame(my_data) # is this necessary??
 
 # launch Shiny app (commented out bc script sourced into Ch5_Updating_a_data_package.R)
-# EML::shiny_attributes(data = my_data)
+EML::shiny_attributes(data = my_data)
 
 # read in attributes list generated in shiny app above
 my_attributes<- read.csv("data/Attributes_Table.csv")
